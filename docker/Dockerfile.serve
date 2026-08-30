@@ -1,0 +1,25 @@
+# Stage 1: Base with inference-only dependencies
+FROM python:3.11-slim AS base
+WORKDIR /app
+COPY requirements/serve.txt .
+RUN pip install --no-cache-dir -r serve.txt
+
+# Stage 2: Serving runtime
+FROM base AS serving
+
+RUN addgroup --system app && adduser --system --ingroup app app
+
+WORKDIR /app
+COPY src/model.py ./src/model.py
+COPY src/serve.py ./src/serve.py
+
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
+WORKDIR /app/src
+USER app
+
+CMD ["uvicorn", "serve:app", "--host", "0.0.0.0", "--port", "8080"]

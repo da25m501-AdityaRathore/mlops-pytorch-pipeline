@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-training
+  namespace: ml-training
+  labels:
+    app: mlops-pytorch-pipeline
+    component: training
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 7200
+  template:
+    metadata:
+      labels:
+        app: mlops-pytorch-pipeline
+        component: training
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: trainer
+          image: mlops-train:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TRAINING_CONFIG_PATH
+              value: /app/configs/training_config.yaml
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/configs
+            - name: data-volume
+              mountPath: /app/data
+            - name: checkpoint-volume
+              mountPath: /app/checkpoints
+      volumes:
+        - name: config-volume
+          configMap:
+            name: training-config
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: ml-data-pvc
+        - name: checkpoint-volume
+          persistentVolumeClaim:
+            claimName: ml-checkpoints-pvc
+
+# ---------------------------------------------------------------------------
+# BONUS (5 pts): GPU variant. Apply this instead of (or as a patch on top of)
+# the Job above when running on a GPU-enabled node pool.
+#
+# apiVersion: batch/v1
+# kind: Job
+# metadata:
+#   name: model-training-gpu
+#   namespace: ml-training
+# spec:
+#   backoffLimit: 2
+#   template:
+#     spec:
+#       restartPolicy: Never
+#       nodeSelector:
+#         cloud.google.com/gke-accelerator: nvidia-tesla-t4  # example; adjust per cluster
+#       tolerations:
+#         - key: "nvidia.com/gpu"
+#           operator: "Exists"
+#           effect: "NoSchedule"
+#       containers:
+#         - name: trainer
+#           image: mlops-train:v1
+#           resources:
+#             requests:
+#               cpu: "2"
+#               memory: 4Gi
+#               nvidia.com/gpu: 1
+#             limits:
+#               cpu: "2"
+#               memory: 4Gi
+#               nvidia.com/gpu: 1
+#           volumeMounts:
+#             - name: config-volume
+#               mountPath: /app/configs
+#             - name: data-volume
+#               mountPath: /app/data
+#             - name: checkpoint-volume
+#               mountPath: /app/checkpoints
+#       volumes:
+#         - name: config-volume
+#           configMap:
+#             name: training-config
+#         - name: data-volume
+#           persistentVolumeClaim:
+#             claimName: ml-data-pvc
+#         - name: checkpoint-volume
+#           persistentVolumeClaim:
+#             claimName: ml-checkpoints-pvc

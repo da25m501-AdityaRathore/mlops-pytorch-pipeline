@@ -1,0 +1,26 @@
+# Not explicitly listed in the assignment's file tree, but required:
+# training-job.yaml and serving-deployment.yaml both mount PVCs for
+# /app/data and /app/checkpoints, so those claims must exist somewhere.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-data-pvc
+  namespace: ml-training
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-checkpoints-pvc
+  namespace: ml-training
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi

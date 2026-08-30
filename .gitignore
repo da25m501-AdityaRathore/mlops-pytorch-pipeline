@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+*.egg
+build/
+dist/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Data & model artifacts (large / regenerable — never commit)
+data/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+
+# Secrets — never commit these
+.env
+.env.*
+*.pem
+*.key
+secrets/
+k8s/*secret*.yaml
+!k8s/*secret*.example.yaml
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Logs
+*.log

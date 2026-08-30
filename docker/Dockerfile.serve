@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1
+
+# ---- Stage 1: build dependencies into a venv -------------------------------
+FROM python:3.11-slim AS builder
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/serve.txt .
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r serve.txt
+
+# ---- Stage 2: slim runtime image ------------------------------------------
+FROM python:3.11-slim AS serving
+WORKDIR /app
+
+# Only inference deps are copied in (no tensorboard/training libs, since
+# they were never installed in the builder stage's venv above).
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    CHECKPOINT_PATH=/app/checkpoints/classifier_v1.pt
+
+COPY src/serve.py src/model.py ./src/
+
+# Non-root user
+RUN groupadd --gid 1000 appuser \
+    && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser \
+    && mkdir -p /app/checkpoints \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request,sys; \
+    sys.exit(0) if urllib.request.urlopen('http://localhost:8080/health', timeout=2).status == 200 else sys.exit(1)"
+
+WORKDIR /app/src
+CMD ["uvicorn", "serve:app", "--host", "0.0.0.0", "--port", "8080"]
